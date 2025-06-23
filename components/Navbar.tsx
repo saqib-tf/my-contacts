@@ -1,21 +1,25 @@
+import Link from "next/link";
+
 export default function Navbar() {
   return (
     <nav className="navbar bg-base-300 border-b border-base-200 dark:border-base-300">
       {/* Left: Logo */}
       <div className="navbar-start">
-        <a className="btn btn-ghost text-xl font-bold tracking-tight">MyContacts</a>
+        <Link href="/" className="btn btn-ghost text-xl font-bold tracking-tight">
+          MyContacts
+        </Link>
       </div>
       {/* Middle: Links */}
       <div className="navbar-center hidden lg:flex">
         <ul className="menu menu-horizontal px-1">
           <li>
-            <a>Home</a>
+            <Link href="/">Home</Link>
           </li>
           <li>
-            <a>Settings</a>
+            <Link href="/settings">Settings</Link>
           </li>
           <li>
-            <a>About</a>
+            <Link href="/about">About</Link>
           </li>
         </ul>
       </div>
