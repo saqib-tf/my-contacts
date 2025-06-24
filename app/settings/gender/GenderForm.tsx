@@ -4,97 +4,85 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Gender } from "@/lib/schema";
 
-interface GenderFormProps {
-  genderId?: string;
-}
+export type GenderFormProps = {
+  initial?: Partial<Gender>;
+  onSubmit: (data: { code: string; name: string }) => Promise<void> | void;
+  loading?: boolean;
+  submitLabel?: string;
+  cancelLabel?: string;
+  onCancel?: () => void;
+};
 
-export default function GenderForm({ genderId }: GenderFormProps) {
+export default function GenderForm({
+  initial = {},
+  onSubmit,
+  loading = false,
+  submitLabel = "Save",
+  cancelLabel = "Cancel",
+  onCancel,
+}: GenderFormProps) {
   const router = useRouter();
-  const isEdit = Boolean(genderId);
+  const isEdit = Boolean(initial.id);
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isEdit && genderId) {
-      setLoading(true);
-      fetch(`/api/gender/${genderId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setCode(data.code || "");
-          setName(data.name || "");
-        })
-        .catch(() => setError("Failed to load gender."))
-        .finally(() => setLoading(false));
+    if (isEdit) {
+      setCode(initial.code || "");
+      setName(initial.name || "");
     }
-  }, [isEdit, genderId]);
+  }, [isEdit, initial]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     try {
-      const method = isEdit ? "PUT" : "POST";
-      const url = isEdit ? `/api/gender/${genderId}` : "/api/gender";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, name }),
-      });
-      if (!res.ok) throw new Error("Failed to save gender");
+      await onSubmit({ code, name });
       router.push("/settings/gender");
     } catch (err) {
       setError((err as Error).message);
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4">{isEdit ? "Edit Gender" : "Add Gender"}</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block mb-1 font-medium">Code</label>
-          <Input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            required
-            maxLength={16}
-            placeholder="Enter code"
-            className="w-full"
-          />
-        </div>
-        <div>
-          <label className="block mb-1 font-medium">Name</label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            maxLength={64}
-            placeholder="Enter name"
-            className="w-full"
-          />
-        </div>
-        {error && <div className="text-red-600 text-sm">{error}</div>}
-        <div className="flex gap-2 justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => router.back()}
-            disabled={loading}
-          >
-            Cancel
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+      <div>
+        <label className="block mb-1 font-medium">Code</label>
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          required
+          maxLength={16}
+          placeholder="Enter code"
+          className="w-full"
+        />
+      </div>
+      <div>
+        <label className="block mb-1 font-medium">Name</label>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          maxLength={64}
+          placeholder="Enter name"
+          className="w-full"
+        />
+      </div>
+      {error && <div className="text-red-600 text-sm">{error}</div>}
+      <div className="flex gap-2 mt-2">
+        <Button type="submit" disabled={loading}>
+          {loading ? "Saving..." : submitLabel}
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={loading}>
+            {cancelLabel}
           </Button>
-          <Button type="submit" size="sm" variant="default" disabled={loading}>
-            {loading ? "Saving..." : isEdit ? "Update" : "Create"}
-          </Button>
-        </div>
-      </form>
-    </div>
+        )}
+      </div>
+    </form>
   );
 }

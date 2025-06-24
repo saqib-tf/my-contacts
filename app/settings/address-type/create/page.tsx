@@ -2,26 +2,26 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import GenderForm from "../GenderForm";
+import AddressTypeForm from "../AddressTypeForm";
 
-export default function GenderCreatePage() {
+export default function AddressTypeCreatePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   return (
-    <div className="max-w-xl mt-4">
-      <h2 className="text-2xl font-bold mb-4">Add Gender</h2>
-      <GenderForm
+    <div className="mt-4">
+      <h2 className="text-2xl font-bold mb-4">Add Address Type</h2>
+      <AddressTypeForm
         onSubmit={async (data) => {
           setLoading(true);
           try {
-            const res = await fetch("/api/gender", {
+            const res = await fetch("/api/address-type", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(data),
             });
-            if (!res.ok) throw new Error("Failed to create gender");
-            router.push("/settings/gender");
+            if (!res.ok) throw new Error("Failed to create address type");
+            router.push("/settings/address-type");
           } finally {
             setLoading(false);
           }
@@ -29,7 +29,7 @@ export default function GenderCreatePage() {
         loading={loading}
         submitLabel="Save"
         cancelLabel="Cancel"
-        onCancel={() => router.push("/settings/gender")}
+        onCancel={() => router.push("/settings/address-type")}
       />
     </div>
   );

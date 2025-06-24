@@ -1,44 +1,44 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import GenderForm from "../GenderForm";
-import type { Gender } from "@/lib/schema";
+import AddressTypeForm from "../AddressTypeForm";
+import type { AddressType } from "@/lib/schema";
 
-export default function GenderEditPage() {
+export default function AddressTypeEditPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const [gender, setGender] = useState<Gender | null>(null);
+  const [addressType, setAddressType] = useState<AddressType | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
     setFetching(true);
-    fetch(`/api/gender/${id}`)
+    fetch(`/api/address-type/${id}`)
       .then((res) => res.json())
-      .then((data) => setGender(data))
+      .then((data) => setAddressType(data))
       .finally(() => setFetching(false));
   }, [id]);
 
   if (fetching) return <div className="mt-8">Loading...</div>;
-  if (!gender) return <div className="mt-8 text-red-600">Gender not found.</div>;
+  if (!addressType) return <div className="mt-8 text-red-600">Address type not found.</div>;
 
   return (
     <div className="mt-4">
-      <h2 className="text-2xl font-bold mb-4">Edit Gender</h2>
-      <GenderForm
-        initial={gender}
+      <h2 className="text-2xl font-bold mb-4">Edit Address Type</h2>
+      <AddressTypeForm
+        initial={addressType}
         onSubmit={async (data) => {
           setLoading(true);
           try {
-            const res = await fetch(`/api/gender/${id}`, {
+            const res = await fetch(`/api/address-type/${id}`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(data),
             });
-            if (!res.ok) throw new Error("Failed to update gender");
-            router.push("/settings/gender");
+            if (!res.ok) throw new Error("Failed to update address type");
+            router.push("/settings/address-type");
           } finally {
             setLoading(false);
           }
@@ -46,7 +46,7 @@ export default function GenderEditPage() {
         loading={loading}
         submitLabel="Save"
         cancelLabel="Cancel"
-        onCancel={() => router.push("/settings/gender")}
+        onCancel={() => router.push("/settings/address-type")}
       />
     </div>
   );
