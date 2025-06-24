@@ -8,7 +8,10 @@ export async function GET(req: NextRequest) {
   const pageSize = Number(searchParams.get("pageSize") || 10);
   const sortBy = (searchParams.get("sortBy") as keyof import("@/lib/schema").State) || "id";
   const sortDir = searchParams.get("sortDir") === "desc" ? "desc" : "asc";
-  const result = await searchStates({ search, page, pageSize, sortBy, sortDir });
+  const countryId = searchParams.get("countryId")
+    ? Number(searchParams.get("countryId"))
+    : undefined;
+  const result = await searchStates({ search, page, pageSize, sortBy, sortDir, countryId });
   return NextResponse.json(result);
 }
 

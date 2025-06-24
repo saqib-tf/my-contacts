@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -24,7 +24,7 @@ import { useDebounce } from "use-debounce";
 import type { Country } from "@/lib/schema";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, List, Plus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -36,12 +36,13 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
+import Link from "next/link";
 
 function getCountryUrl({ search, page, pageSize, sortBy, sortDir }: any) {
   const params = new URLSearchParams({
     search: search || "",
     page: String(page || 1),
-    pageSize: String(pageSize || 10),
+    pageSize: String(pageSize || PAGE_SIZE),
     sortBy: String(sortBy || "id"),
     sortDir: sortDir || "asc",
   });
@@ -102,19 +103,25 @@ export default function CountrySettingsPage() {
           className="w-64"
         />
         <div className="flex gap-2">
-          <Button type="button" size="sm" onClick={() => router.push("/settings/country/create")}>
-            Create Country
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => router.push("/settings/country/create")}
+            className="flex items-center gap-1"
+          >
+            <Plus size={16} className="mr-1" /> Create Country
           </Button>
           <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
             <AlertDialogTrigger asChild>
               <Button
                 type="button"
                 size="sm"
-                variant="secondary"
+                variant="destructive"
                 disabled={selectedIds.length === 0}
                 onClick={() => setBulkDeleteOpen(true)}
+                className="flex items-center gap-1"
               >
-                Delete
+                <Trash2 size={16} className="mr-1" /> Delete
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -138,9 +145,9 @@ export default function CountrySettingsPage() {
                       );
                       setSelectedIds([]);
                       setBulkDeleteOpen(false);
-                      // Optionally, refresh data
-                      // mutate(getCountryUrl({ search: debouncedSearch, page, pageSize, sortBy, sortDir }));
-                      window.location.reload();
+                      mutate(
+                        getCountryUrl({ search: debouncedSearch, page, pageSize, sortBy, sortDir })
+                      );
                     } finally {
                       setBulkDeleting(false);
                     }
@@ -207,26 +214,39 @@ export default function CountrySettingsPage() {
                   />
                 </TableCell>
                 <TableCell>{c.code}</TableCell>
-                <TableCell>{c.name}</TableCell>
+                <TableCell>
+                  <Link href={`/settings/country/${c.id}/state`}>{c.name}</Link>
+                </TableCell>
                 <TableCell className="text-center flex items-center justify-center gap-2">
                   <button
                     type="button"
                     className="text-gray-500 hover:text-gray-700 cursor-pointer hover:underline"
+                    aria-label="States"
+                    onClick={() => router.push(`/settings/country/${c.id}/state`)}
+                  >
+                    <List size={18} />
+                  </button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
                     aria-label="Edit"
                     onClick={() => router.push(`/settings/country/${c.id}`)}
                   >
                     <Pencil size={18} />
-                  </button>
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <button
+                      <Button
                         type="button"
-                        className="text-gray-500 hover:text-gray-700 cursor-pointer hover:underline"
-                        onClick={() => setDeleteId(String(c.id))}
+                        size="sm"
+                        variant="destructive"
+                        className="h-8 w-8 p-0"
                         aria-label="Delete"
+                        onClick={() => setDeleteId(String(c.id))}
                       >
-                        <Trash2 size={18} />
-                      </button>
+                        <Trash2 size={16} />
+                      </Button>
                     </AlertDialogTrigger>
                     {deleteId === String(c.id) && (
                       <AlertDialogContent>
@@ -248,9 +268,15 @@ export default function CountrySettingsPage() {
                                 await fetch(`/api/country/${c.id}`, { method: "DELETE" });
                                 setDeleteId(null);
                                 setSelectedIds((prev) => prev.filter((id) => id !== String(c.id)));
-                                // Optionally, refresh data
-                                // mutate(getCountryUrl({ search: debouncedSearch, page, pageSize, sortBy, sortDir }));
-                                window.location.reload();
+                                mutate(
+                                  getCountryUrl({
+                                    search: debouncedSearch,
+                                    page,
+                                    pageSize,
+                                    sortBy,
+                                    sortDir,
+                                  })
+                                );
                               } finally {
                                 setDeleting(false);
                               }

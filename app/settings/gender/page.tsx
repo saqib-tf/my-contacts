@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useDebounce } from "use-debounce";
 import { SEARCH_DEBOUNCE_MS, PAGE_SIZE } from "@/lib/constants";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, Plus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -42,7 +42,7 @@ function getGenderUrl({ search, page, pageSize, sortBy, sortDir }: SearchOptions
   const params = new URLSearchParams({
     search: search || "",
     page: String(page || 1),
-    pageSize: String(pageSize || 10),
+    pageSize: String(pageSize || PAGE_SIZE),
     sortBy: String(sortBy || "id"),
     sortDir: sortDir || "asc",
   });
@@ -125,18 +125,24 @@ export default function GenderSettingsPage() {
           className="w-64"
         />
         <div className="flex gap-2">
-          <Button type="button" size="sm" onClick={() => router.push("/settings/gender/create")}>
-            Add Gender
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => router.push("/settings/gender/create")}
+            className="flex items-center gap-1"
+          >
+            <Plus size={16} className="mr-1" /> Add Gender
           </Button>
           <AlertDialog open={deleteManyOpen} onOpenChange={setDeleteManyOpen}>
             <AlertDialogTrigger asChild>
               <Button
                 type="button"
                 size="sm"
-                variant="secondary"
+                variant="destructive"
                 disabled={selectedIds.length === 0}
+                className="flex items-center gap-1"
               >
-                Delete
+                <Trash2 size={16} className="mr-1" /> Delete
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -208,24 +214,27 @@ export default function GenderSettingsPage() {
                 <TableCell>{g.code}</TableCell>
                 <TableCell>{g.name}</TableCell>
                 <TableCell className="text-center flex items-center justify-center gap-2">
-                  <button
+                  <Button
                     type="button"
-                    className="text-gray-500 hover:text-gray-700 cursor-pointer hover:underline"
+                    size="icon"
+                    variant="ghost"
                     aria-label="Edit"
                     onClick={() => router.push(`/settings/gender/${g.id}`)}
                   >
                     <Pencil size={18} />
-                  </button>
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <button
+                      <Button
                         type="button"
-                        className="text-gray-500 hover:text-gray-700 cursor-pointer hover:underline"
-                        onClick={() => setDeleteId(String(g.id))}
+                        size="sm"
+                        variant="destructive"
+                        className="h-8 w-8 p-0"
                         aria-label="Delete"
+                        onClick={() => setDeleteId(String(g.id))}
                       >
-                        <Trash2 size={18} />
-                      </button>
+                        <Trash2 size={16} />
+                      </Button>
                     </AlertDialogTrigger>
                     {deleteId === String(g.id) && (
                       <AlertDialogContent>

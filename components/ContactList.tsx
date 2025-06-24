@@ -1,8 +1,7 @@
-"use client";
-
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import useSWR, { mutate } from "swr";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableHeader,
@@ -19,25 +18,30 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from "@/components/ui/pagination";
-import { SEARCH_DEBOUNCE_MS, PAGE_SIZE } from "@/lib/constants";
-import { useDebounce } from "use-debounce";
-import type { AddressType } from "@/lib/schema";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 import { Trash2, Pencil, Plus } from "lucide-react";
+import { PAGE_SIZE, SEARCH_DEBOUNCE_MS } from "@/lib/constants";
+import { useDebounce } from "use-debounce";
+import type { Contact } from "@/lib/schema";
 import {
   AlertDialog,
   AlertDialogTrigger,
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
   AlertDialogAction,
+  AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
+import { useRouter } from "next/navigation";
 
-function getAddressTypeUrl({ search, page, pageSize, sortBy, sortDir }: any) {
+interface ContactListProps {
+  onCreate?: () => void;
+  onEdit?: (contact: any) => void;
+  onDelete?: (contact: any) => void;
+}
+
+function getContactUrl({ search, page, pageSize, sortBy, sortDir }: any) {
   const params = new URLSearchParams({
     search: search || "",
     page: String(page || 1),
@@ -45,25 +49,25 @@ function getAddressTypeUrl({ search, page, pageSize, sortBy, sortDir }: any) {
     sortBy: String(sortBy || "id"),
     sortDir: sortDir || "asc",
   });
-  return `/api/address-type?${params.toString()}`;
+  return `/api/contact?${params.toString()}`;
 }
 
-export default function AddressTypeSettingsPage() {
+export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [page, setPage] = useState(1);
   const pageSize = PAGE_SIZE;
-  const [sortBy, setSortBy] = useState<keyof AddressType>("id");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [sortBy, setSortBy] = useState("id");
+  const [sortDir, setSortDir] = useState("asc");
+  const router = typeof window !== "undefined" ? require("next/navigation").useRouter() : null;
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const router = useRouter();
 
   const { data, isLoading } = useSWR(
-    getAddressTypeUrl({ search: debouncedSearch, page, pageSize, sortBy, sortDir }),
+    getContactUrl({ search: debouncedSearch, page, pageSize, sortBy, sortDir }),
     async (url) => {
       const res = await fetch(url);
       return res.json();
@@ -72,28 +76,27 @@ export default function AddressTypeSettingsPage() {
   );
 
   const total = data?.total || 0;
-  const addressTypes: AddressType[] = data?.data || [];
+  const contacts: Contact[] = data?.data || [];
   const totalPages = Math.ceil(total / pageSize);
-  const allIds = addressTypes.map((c) => String(c.id));
-  const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.includes(id));
+  const allIds = contacts.map((c) => String(c.id));
+  const allSelected = allIds.length > 0 && allIds.every((id) => selected.includes(id));
 
   const toggleAll = () => {
-    setSelectedIds(allSelected ? [] : allIds);
+    setSelected(allSelected ? [] : allIds);
   };
 
   const toggleOne = (id: string | number) => {
     const idStr = String(id);
-    setSelectedIds((prev) =>
+    setSelected((prev) =>
       prev.includes(idStr) ? prev.filter((x) => x !== idStr) : [...prev, idStr]
     );
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Address Type Settings</h2>
-      <div className="mb-4 flex items-center justify-between">
+    <div className="w-full max-w-2xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
         <Input
-          placeholder="Search address types..."
+          placeholder="Search contacts..."
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -105,10 +108,9 @@ export default function AddressTypeSettingsPage() {
           <Button
             type="button"
             size="sm"
-            onClick={() => router.push("/settings/address-type/create")}
-            className="flex items-center gap-1"
+            onClick={() => (window.location.href = "/contact/create")}
           >
-            <Plus size={16} className="mr-1" /> Create Address Type
+            <Plus size={16} className="mr-1" /> Create
           </Button>
           <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
             <AlertDialogTrigger asChild>
@@ -116,7 +118,7 @@ export default function AddressTypeSettingsPage() {
                 type="button"
                 size="sm"
                 variant="destructive"
-                disabled={selectedIds.length === 0}
+                disabled={selected.length === 0}
                 onClick={() => setBulkDeleteOpen(true)}
                 className="flex items-center gap-1"
               >
@@ -125,10 +127,10 @@ export default function AddressTypeSettingsPage() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Selected Address Types</AlertDialogTitle>
+                <AlertDialogTitle>Delete Selected Contacts</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete {selectedIds.length} selected address type
-                  {selectedIds.length === 1 ? "" : "s"}? This action cannot be undone.
+                  Are you sure you want to delete {selected.length} selected contact
+                  {selected.length === 1 ? "" : "s"}? This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -140,14 +142,12 @@ export default function AddressTypeSettingsPage() {
                     setBulkDeleting(true);
                     try {
                       await Promise.all(
-                        selectedIds.map((id) =>
-                          fetch(`/api/address-type/${id}`, { method: "DELETE" })
-                        )
+                        selected.map((id) => fetch(`/api/contact/${id}`, { method: "DELETE" }))
                       );
-                      setSelectedIds([]);
+                      setSelected([]);
                       setBulkDeleteOpen(false);
                       mutate(
-                        getAddressTypeUrl({
+                        getContactUrl({
                           search: debouncedSearch,
                           page,
                           pageSize,
@@ -171,12 +171,12 @@ export default function AddressTypeSettingsPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-10 text-center font-semibold">
+            <TableHead className="w-8">
               <input
                 type="checkbox"
+                aria-label="Select all"
                 checked={allSelected}
                 onChange={toggleAll}
-                aria-label="Select all"
               />
             </TableHead>
             <TableHead
@@ -191,46 +191,89 @@ export default function AddressTypeSettingsPage() {
             <TableHead
               className="font-semibold cursor-pointer"
               onClick={() => {
-                setSortBy("name");
+                setSortBy("first_name");
                 setSortDir(sortDir === "asc" ? "desc" : "asc");
               }}
             >
-              Name
+              First Name
             </TableHead>
-            <TableHead className="w-10 text-center font-semibold">Actions</TableHead>
+            <TableHead
+              className="font-semibold cursor-pointer"
+              onClick={() => {
+                setSortBy("last_name");
+                setSortDir(sortDir === "asc" ? "desc" : "asc");
+              }}
+            >
+              Last Name
+            </TableHead>
+            <TableHead
+              className="font-semibold cursor-pointer"
+              onClick={() => {
+                setSortBy("gender_id");
+                setSortDir(sortDir === "asc" ? "desc" : "asc");
+              }}
+            >
+              Gender
+            </TableHead>
+            <TableHead
+              className="font-semibold cursor-pointer"
+              onClick={() => {
+                setSortBy("date_of_birth");
+                setSortDir(sortDir === "asc" ? "desc" : "asc");
+              }}
+            >
+              Date of Birth
+            </TableHead>
+            <TableHead className="font-semibold">Profile Picture</TableHead>
+            <TableHead className="text-center font-semibold">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={4}>Loading...</TableCell>
+              <TableCell colSpan={9}>Loading...</TableCell>
             </TableRow>
-          ) : addressTypes.length === 0 ? (
+          ) : contacts.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4}>No address types found.</TableCell>
+              <TableCell colSpan={9}>No contacts found.</TableCell>
             </TableRow>
           ) : (
-            addressTypes.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="text-center">
+            contacts.map((contact) => (
+              <TableRow key={contact.id}>
+                <TableCell className="w-8">
                   <input
                     type="checkbox"
-                    checked={selectedIds.includes(String(c.id))}
-                    onChange={() => toggleOne(c.id)}
-                    aria-label={`Select address type ${c.id}`}
+                    aria-label={`Select row ${contact.id}`}
+                    checked={selected.includes(String(contact.id))}
+                    onChange={() => toggleOne(contact.id)}
                   />
                 </TableCell>
-                <TableCell>{c.id}</TableCell>
-                <TableCell>{c.name}</TableCell>
-                <TableCell className="text-center flex items-center justify-center gap-2">
+                <TableCell>{contact.id}</TableCell>
+                <TableCell>{contact.first_name}</TableCell>
+                <TableCell>{contact.last_name}</TableCell>
+                <TableCell>{contact.gender_id}</TableCell>
+                <TableCell>{contact.date_of_birth}</TableCell>
+                <TableCell>
+                  {contact.profile_picture_url ? (
+                    <img
+                      src={contact.profile_picture_url}
+                      alt="Profile"
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-center flex gap-2 justify-center">
                   <Button
                     type="button"
-                    size="icon"
+                    size="sm"
                     variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => router && router.push(`/contact/${contact.id}`)}
                     aria-label="Edit"
-                    onClick={() => router.push(`/settings/address-type/${c.id}`)}
                   >
-                    <Pencil size={18} />
+                    <Pencil size={16} />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -239,34 +282,42 @@ export default function AddressTypeSettingsPage() {
                         size="sm"
                         variant="destructive"
                         className="h-8 w-8 p-0"
+                        onClick={() => setDeleteId(contact.id)}
                         aria-label="Delete"
-                        onClick={() => setDeleteId(String(c.id))}
                       >
                         <Trash2 size={16} />
                       </Button>
                     </AlertDialogTrigger>
-                    {deleteId === String(c.id) && (
+                    {deleteId === contact.id && (
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Address Type</AlertDialogTitle>
+                          <AlertDialogTitle>Delete Contact</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete address type <b>{c.name}</b>? This
-                            action cannot be undone.
+                            Are you sure you want to delete contact{" "}
+                            <b>
+                              {contact.first_name} {contact.last_name}
+                            </b>
+                            ? This action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setDeleteId(null)} disabled={deleting}>
+                          <AlertDialogCancel
+                            onClick={() => setDeleteId(null)}
+                            disabled={isDeleting}
+                          >
                             Cancel
                           </AlertDialogCancel>
                           <AlertDialogAction
                             onClick={async () => {
-                              setDeleting(true);
+                              setIsDeleting(true);
                               try {
-                                await fetch(`/api/address-type/${c.id}`, { method: "DELETE" });
+                                await fetch(`/api/contact/${contact.id}`, { method: "DELETE" });
                                 setDeleteId(null);
-                                setSelectedIds((prev) => prev.filter((id) => id !== String(c.id)));
+                                setSelected((prev) =>
+                                  prev.filter((id) => id !== String(contact.id))
+                                );
                                 mutate(
-                                  getAddressTypeUrl({
+                                  getContactUrl({
                                     search: debouncedSearch,
                                     page,
                                     pageSize,
@@ -275,12 +326,12 @@ export default function AddressTypeSettingsPage() {
                                   })
                                 );
                               } finally {
-                                setDeleting(false);
+                                setIsDeleting(false);
                               }
                             }}
-                            disabled={deleting}
+                            disabled={isDeleting}
                           >
-                            {deleting ? "Deleting..." : "Delete"}
+                            {isDeleting ? "Deleting..." : "Delete"}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -293,9 +344,7 @@ export default function AddressTypeSettingsPage() {
         </TableBody>
       </Table>
       <div className="mt-4 flex items-center justify-between">
-        {/* Left: Selected count */}
-        <div className="text-sm text-gray-600 min-w-[120px]">{`${selectedIds.length} selected`}</div>
-        {/* Center: Pagination */}
+        <div className="text-sm text-gray-600 min-w-[120px]">{selected.length} selected</div>
         <Pagination>
           <PaginationContent>
             <PaginationItem>
@@ -313,7 +362,6 @@ export default function AddressTypeSettingsPage() {
             </PaginationItem>
           </PaginationContent>
         </Pagination>
-        {/* Right: Total rows found */}
         <div className="text-sm text-gray-600 min-w-[120px] text-right">{total} found</div>
       </div>
     </div>
