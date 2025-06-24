@@ -2,6 +2,21 @@ import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { Contact } from "@/lib/schema";
+import { FilePond, registerPlugin } from "react-filepond";
+import "filepond/dist/filepond.min.css";
+import FilePondPluginImagePreview from "filepond-plugin-image-preview";
+import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
+import FilePondPluginImageEdit from "filepond-plugin-image-edit";
+import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
+import FilePondPluginFileValidateSize from "filepond-plugin-file-validate-size";
+import { uploadToVercelBlob } from "@/lib/uploadToVercelBlob";
+
+registerPlugin(
+  FilePondPluginImagePreview,
+  FilePondPluginImageEdit,
+  FilePondPluginFileValidateType,
+  FilePondPluginFileValidateSize
+);
 
 interface ContactFormProps {
   initial?: Partial<Contact>;
@@ -26,6 +41,16 @@ export default function ContactForm({
   const [profilePictureUrl, setProfilePictureUrl] = useState(initial.profile_picture_url || "");
   const [genderId, setGenderId] = useState(initial.gender_id ? String(initial.gender_id) : "");
   const [error, setError] = useState<string | null>(null);
+  const [filePondFiles, setFilePondFiles] = useState<any[]>(
+    initial.profile_picture_url
+      ? [
+          {
+            source: initial.profile_picture_url,
+            options: { type: "local" },
+          },
+        ]
+      : []
+  );
 
   return (
     <form
@@ -82,12 +107,65 @@ export default function ContactForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium mb-1">Profile Picture URL</label>
-        <Input
-          value={profilePictureUrl}
-          onChange={(e) => setProfilePictureUrl(e.target.value)}
-          type="url"
+        <label className="block text-sm font-medium mb-1">Profile Picture</label>
+        <FilePond
+          files={filePondFiles}
+          onupdatefiles={setFilePondFiles}
+          allowMultiple={false}
+          maxFiles={1}
+          acceptedFileTypes={["image/*"]}
+          labelIdle="Drag & Drop your image or <span class='filepond--label-action'>Browse</span>"
+          maxFileSize="1MB"
+          allowImageEdit={true}
+          allowImagePreview={true}
+          allowFileTypeValidation={true}
+          allowFileSizeValidation={true}
+          onprocessfile={async (error, file) => {
+            if (error) return;
+            const uploadedFile = file.file;
+            if (uploadedFile && uploadedFile instanceof File) {
+              try {
+                const url = await uploadToVercelBlob(uploadedFile);
+                setProfilePictureUrl(url);
+              } catch (err: any) {
+                setError(err?.message || "Failed to upload image.");
+              }
+            }
+          }}
+          server={{
+            process: async (fieldName, file, metadata, load, error, progress, abort) => {
+              try {
+                let uploadFile = file;
+                // FilePond may provide a Blob, convert to File if needed
+                if (!(file instanceof File)) {
+                  uploadFile = Object.assign(
+                    new File([file], file.name, {
+                      type: file.type,
+                      lastModified: file.lastModified || Date.now(),
+                    }),
+                    { webkitRelativePath: "" }
+                  );
+                }
+                const url = await uploadToVercelBlob(uploadFile as File);
+                setProfilePictureUrl(url);
+                load(url);
+              } catch (err: any) {
+                error(err?.message || "Failed to upload image.");
+              }
+            },
+            revert: (uniqueFileId, load, error) => {
+              setProfilePictureUrl("");
+              load();
+            },
+          }}
         />
+        {profilePictureUrl && (
+          <img
+            src={profilePictureUrl}
+            alt="Profile Preview"
+            className="w-16 h-16 rounded-full object-cover mt-2"
+          />
+        )}
       </div>
       {error && <div className="text-red-600 text-sm">{error}</div>}
       <div className="flex gap-2 mt-4">
