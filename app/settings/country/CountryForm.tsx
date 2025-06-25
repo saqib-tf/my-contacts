@@ -1,10 +1,20 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { Country, NewCountry } from "@/lib/schema";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import { ShadcnInputField } from "@/components/ui/ShadcnInputField";
 
 interface CountryFormProps {
   initialData?: Partial<Country>;
@@ -12,41 +22,64 @@ interface CountryFormProps {
   loading?: boolean;
 }
 
-export default function CountryForm({ initialData = {}, onSubmit, loading }: CountryFormProps) {
-  const [code, setCode] = useState(initialData.code || "");
-  const [name, setName] = useState(initialData.name || "");
-  const [error, setError] = useState("");
-  const router = useRouter();
+const countrySchema = z.object({
+  code: z.string().min(1, "Code is required").max(10, "Code must be at most 10 characters"),
+  name: z.string().min(1, "Name is required").max(255, "Name must be at most 255 characters"),
+});
+type CountryFormValues = z.infer<typeof countrySchema>;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    if (!code.trim() || !name.trim()) {
-      setError("Code and Name are required.");
-      return;
-    }
-    await onSubmit({ code, name } as NewCountry);
+export default function CountryForm({ initialData = {}, onSubmit, loading }: CountryFormProps) {
+  const router = useRouter();
+  const form = useForm<CountryFormValues>({
+    resolver: zodResolver(countrySchema),
+    defaultValues: {
+      code: initialData.code || "",
+      name: initialData.name || "",
+    },
+  });
+
+  const onFormSubmit = async (data: CountryFormValues) => {
+    await onSubmit(data as NewCountry);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-      <div>
-        <label className="block mb-1 font-medium">Code</label>
-        <Input value={code} onChange={(e) => setCode(e.target.value)} required maxLength={10} />
-      </div>
-      <div>
-        <label className="block mb-1 font-medium">Name</label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} required maxLength={255} />
-      </div>
-      {error && <div className="text-red-500 text-sm">{error}</div>}
-      <div className="flex gap-2 mt-2">
-        <Button type="submit" disabled={loading}>
-          {loading ? "Saving..." : "Save"}
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => router.back()} disabled={loading}>
-          Cancel
-        </Button>
-      </div>
-    </form>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-4 max-w-md">
+        <ShadcnInputField
+          form={form}
+          name="code"
+          label="Code"
+          inputProps={{
+            maxLength: 10,
+            placeholder: "Enter code",
+          }}
+          disabled={loading}
+          autoFocus
+        />
+        <ShadcnInputField
+          form={form}
+          name="name"
+          label="Name"
+          inputProps={{
+            maxLength: 255,
+            placeholder: "Enter name",
+          }}
+          disabled={loading}
+        />
+        <div className="flex gap-2 mt-2">
+          <Button type="submit" disabled={loading}>
+            {loading ? "Saving..." : "Save"}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => router.back()}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

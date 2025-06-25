@@ -1,22 +1,21 @@
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import type { Contact } from "@/lib/schema";
-import { FilePond, registerPlugin } from "react-filepond";
-import "filepond/dist/filepond.min.css";
-import FilePondPluginImagePreview from "filepond-plugin-image-preview";
-import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
-import FilePondPluginImageEdit from "filepond-plugin-image-edit";
-import FilePondPluginFileValidateType from "filepond-plugin-file-validate-type";
-import FilePondPluginFileValidateSize from "filepond-plugin-file-validate-size";
-import { uploadToVercelBlob } from "@/lib/uploadToVercelBlob";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form } from "@/components/ui/form";
+import { ShadcnInputField } from "@/components/ui/ShadcnInputField";
+import { ShadcnImageUploadField } from "@/components/ui/ShadcnImageUploadField";
 
-registerPlugin(
-  FilePondPluginImagePreview,
-  FilePondPluginImageEdit,
-  FilePondPluginFileValidateType,
-  FilePondPluginFileValidateSize
-);
+const contactSchema = z.object({
+  first_name: z.string().min(1, "First name is required").max(100),
+  last_name: z.string().min(1, "Last name is required").max(100),
+  date_of_birth: z.string().optional().or(z.literal("")),
+  profile_picture_url: z.string().optional(),
+  gender_id: z.string().optional().or(z.literal("")),
+});
+type ContactFormValues = z.infer<typeof contactSchema>;
 
 interface ContactFormProps {
   initial?: Partial<Contact>;
@@ -35,137 +34,73 @@ export default function ContactForm({
   cancelLabel = "Cancel",
   onCancel,
 }: ContactFormProps) {
-  const [firstName, setFirstName] = useState(initial.first_name || "");
-  const [lastName, setLastName] = useState(initial.last_name || "");
-  const [dateOfBirth, setDateOfBirth] = useState(initial.date_of_birth || "");
-  const [profilePictureUrl, setProfilePictureUrl] = useState(initial.profile_picture_url || "");
-  const [genderId, setGenderId] = useState(initial.gender_id ? String(initial.gender_id) : "");
-  const [error, setError] = useState<string | null>(null);
-  const [filePondFiles, setFilePondFiles] = useState<any[]>(
-    initial.profile_picture_url
-      ? [
-          {
-            source: initial.profile_picture_url,
-            options: { type: "local" },
-          },
-        ]
-      : []
-  );
+  const form = useForm<ContactFormValues>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: {
+      first_name: initial.first_name || "",
+      last_name: initial.last_name || "",
+      date_of_birth: initial.date_of_birth || "",
+      profile_picture_url: initial.profile_picture_url || "",
+      gender_id: initial.gender_id ? String(initial.gender_id) : "",
+    },
+  });
 
   return (
-    <form
-      className="space-y-4 max-w-md"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setError(null);
-        if (!firstName.trim() || !lastName.trim()) {
-          setError("First name and last name are required.");
-          return;
-        }
-        try {
+    <Form {...form}>
+      <form
+        className="space-y-4 max-w-md"
+        onSubmit={form.handleSubmit(async (data) => {
           await onSubmit({
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            date_of_birth: dateOfBirth || undefined,
-            profile_picture_url: profilePictureUrl || undefined,
-            gender_id: genderId ? Number(genderId) : undefined,
+            ...data,
+            gender_id: data.gender_id ? Number(data.gender_id) : undefined,
+            profile_picture_url: data.profile_picture_url || undefined,
+            date_of_birth: data.date_of_birth || undefined,
           });
-        } catch (err: any) {
-          setError(err?.message || "Failed to save contact.");
-        }
-      }}
-    >
-      <div>
-        <label className="block text-sm font-medium mb-1">First Name</label>
-        <Input
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          maxLength={100}
-          required
-          autoFocus
+        })}
+      >
+        <ShadcnInputField
+          form={form}
+          name="first_name"
+          label="First Name"
+          inputProps={{ maxLength: 100, autoFocus: true, disabled: loading }}
         />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Last Name</label>
-        <Input
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          maxLength={100}
-          required
+        <ShadcnInputField
+          form={form}
+          name="last_name"
+          label="Last Name"
+          inputProps={{ maxLength: 100, disabled: loading }}
         />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Gender ID</label>
-        <Input value={genderId} onChange={(e) => setGenderId(e.target.value)} type="number" />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Date of Birth</label>
-        <Input
-          value={dateOfBirth || ""}
-          onChange={(e) => setDateOfBirth(e.target.value)}
+        <ShadcnInputField
+          form={form}
+          name="gender_id"
+          label="Gender ID"
+          type="number"
+          inputProps={{ disabled: loading }}
+        />
+        <ShadcnInputField
+          form={form}
+          name="date_of_birth"
+          label="Date of Birth"
           type="date"
+          inputProps={{ disabled: loading }}
         />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Profile Picture</label>
-        <FilePond
-          files={filePondFiles}
-          onupdatefiles={setFilePondFiles}
-          allowMultiple={false}
-          maxFiles={1}
-          acceptedFileTypes={["image/*"]}
-          labelIdle="Drag & Drop your image or <span class='filepond--label-action'>Browse</span>"
-          maxFileSize="1MB"
-          allowImageEdit={true}
-          allowImagePreview={true}
-          allowFileTypeValidation={true}
-          allowFileSizeValidation={true}
-          server={{
-            process: async (fieldName, file, metadata, load, error, progress, abort) => {
-              try {
-                let uploadFile = file;
-                // FilePond may provide a Blob, convert to File if needed
-                if (!(file instanceof File)) {
-                  uploadFile = Object.assign(
-                    new File([file], file.name, {
-                      type: file.type,
-                      lastModified: file.lastModified || Date.now(),
-                    }),
-                    { webkitRelativePath: "" }
-                  );
-                }
-                const url = await uploadToVercelBlob(uploadFile as File);
-                setProfilePictureUrl(url);
-                load(url);
-              } catch (err: any) {
-                error(err?.message || "Failed to upload image.");
-              }
-            },
-            revert: (uniqueFileId, load, error) => {
-              setProfilePictureUrl("");
-              load();
-            },
-          }}
+        <ShadcnImageUploadField
+          form={form}
+          name="profile_picture_url"
+          label="Profile Picture"
+          disabled={loading}
         />
-        {profilePictureUrl && (
-          <img
-            src={profilePictureUrl}
-            alt="Profile Preview"
-            className="w-16 h-16 rounded-full object-cover mt-2"
-          />
-        )}
-      </div>
-      {error && <div className="text-red-600 text-sm">{error}</div>}
-      <div className="flex gap-2 mt-4">
-        <Button type="submit" disabled={loading} className="min-w-[100px]">
-          {submitLabel}
-        </Button>
-        {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel}>
-            {cancelLabel}
+        <div className="flex gap-2 mt-4">
+          <Button type="submit" disabled={loading} className="min-w-[100px]">
+            {submitLabel}
           </Button>
-        )}
-      </div>
-    </form>
+          {onCancel && (
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              {cancelLabel}
+            </Button>
+          )}
+        </div>
+      </form>
+    </Form>
   );
 }
