@@ -120,18 +120,6 @@ export default function ContactForm({
           allowImagePreview={true}
           allowFileTypeValidation={true}
           allowFileSizeValidation={true}
-          onprocessfile={async (error, file) => {
-            if (error) return;
-            const uploadedFile = file.file;
-            if (uploadedFile && uploadedFile instanceof File) {
-              try {
-                const url = await uploadToVercelBlob(uploadedFile);
-                setProfilePictureUrl(url);
-              } catch (err: any) {
-                setError(err?.message || "Failed to upload image.");
-              }
-            }
-          }}
           server={{
             process: async (fieldName, file, metadata, load, error, progress, abort) => {
               try {
