@@ -1,5 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import * as schema from "./schema";
+import * as relations from "./relations";
 
 // Use Netlify-provided environment variables for database connection
 const connectionString =
@@ -13,4 +15,4 @@ if (!connectionString) {
 
 const client = postgres(connectionString, { ssl: "require" });
 
-export const db = drizzle(client);
+export const db = drizzle(client, { schema: { ...schema, ...relations } });

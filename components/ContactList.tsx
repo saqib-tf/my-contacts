@@ -76,7 +76,9 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
   );
 
   const total = data?.total || 0;
-  const contacts: Contact[] = data?.data || [];
+  // Change the contacts type to include gender relation
+  const contacts = (data?.data || []) as Array<Contact & { gender?: { name?: string } }>;
+
   const totalPages = Math.ceil(total / pageSize);
   const allIds = contacts.map((c) => String(c.id));
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.includes(id));
@@ -251,7 +253,9 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
                 <TableCell>{contact.id}</TableCell>
                 <TableCell>{contact.first_name}</TableCell>
                 <TableCell>{contact.last_name}</TableCell>
-                <TableCell>{contact.gender_id}</TableCell>
+                <TableCell>
+                  {contact.gender?.name || <span className="text-gray-400">-</span>}
+                </TableCell>
                 <TableCell>{contact.date_of_birth}</TableCell>
                 <TableCell>
                   {contact.profile_picture_url ? (

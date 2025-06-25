@@ -8,13 +8,16 @@ export async function searchContacts(options: SearchOptions<Contact> = {}) {
   const { search = "", page = 1, pageSize = 10, sortBy = "id", sortDir = "asc" } = options;
   const where = search ? ilike(contact.first_name, `%${search}%`) : undefined;
   const [{ total }] = await db.select({ total: count() }).from(contact).where(where);
-  const data = await db
-    .select()
-    .from(contact)
-    .where(where)
-    .orderBy(sortDir === "asc" ? contact[sortBy] : desc(contact[sortBy]))
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
+  // Use Drizzle relations API to include gender
+  const data = await db.query.contact.findMany({
+    with: {
+      gender: true,
+    },
+    where,
+    orderBy: sortDir === "asc" ? contact[sortBy] : desc(contact[sortBy]),
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+  });
   return { data, total: Number(total) };
 }
 

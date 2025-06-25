@@ -4,9 +4,31 @@ import type { Contact } from "@/lib/schema";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { ShadcnInputField } from "@/components/ui/ShadcnInputField";
 import { ShadcnImageUploadField } from "@/components/ui/ShadcnImageUploadField";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandItem,
+  CommandEmpty,
+  CommandGroup,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useDebounce } from "use-debounce";
+import { SEARCH_DEBOUNCE_MS } from "@/lib/constants";
+import { ShadcnComboboxField } from "@/components/ui/ShadcnComboboxField";
 
 const contactSchema = z.object({
   first_name: z.string().min(1, "First name is required").max(100),
@@ -45,6 +67,60 @@ export default function ContactForm({
     },
   });
 
+  const [genderOptions, setGenderOptions] = React.useState<{ id: number; name: string }[]>([]);
+  const [genderLoading, setGenderLoading] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
+  const [genderSearch, setGenderSearch] = React.useState("");
+  const [debouncedGenderSearch] = useDebounce(genderSearch, SEARCH_DEBOUNCE_MS);
+
+  // Fetch gender options from API (correct route)
+  React.useEffect(() => {
+    let ignore = false;
+    const fetchGenders = async () => {
+      setGenderLoading(true);
+      try {
+        const params = new URLSearchParams({
+          search: debouncedGenderSearch,
+          page: "1",
+          pageSize: "10",
+          sortBy: "name",
+          sortDir: "asc",
+        });
+        const res = await fetch(`/api/gender?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!ignore) setGenderOptions(data.data || []);
+        } else {
+          if (!ignore) setGenderOptions([]);
+        }
+      } catch {
+        if (!ignore) setGenderOptions([]);
+      } finally {
+        if (!ignore) setGenderLoading(false);
+      }
+    };
+    fetchGenders();
+    return () => {
+      ignore = true;
+    };
+  }, [debouncedGenderSearch]);
+
+  // On load, if editing and initial.gender_id is set, fetch gender name and set as search string
+  React.useEffect(() => {
+    if (initial.gender_id) {
+      (async () => {
+        try {
+          const res = await fetch(`/api/gender/${initial.gender_id}`);
+          if (res.ok) {
+            const gender = await res.json();
+            if (gender?.name) setGenderSearch(gender.name);
+          }
+        } catch {}
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial.gender_id]);
+
   return (
     <Form {...form}>
       <form
@@ -70,13 +146,20 @@ export default function ContactForm({
           label="Last Name"
           inputProps={{ maxLength: 100, disabled: loading }}
         />
-        <ShadcnInputField
+        {/* Gender Combobox (reusable) */}
+        <ShadcnComboboxField
           form={form}
           name="gender_id"
-          label="Gender ID"
-          type="number"
-          inputProps={{ disabled: loading }}
+          label="Gender"
+          options={genderOptions}
+          loading={genderLoading}
+          searchValue={genderSearch}
+          onSearchChange={setGenderSearch}
+          placeholder="Select gender"
+          description=""
+          disabled={loading}
         />
+        {/* End Gender Combobox */}
         <ShadcnInputField
           form={form}
           name="date_of_birth"
