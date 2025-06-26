@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from "react";
+"use client";
+
+import React, { useState } from "react";
 import useSWR, { mutate } from "swr";
+import { useParams, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,10 +21,7 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from "@/components/ui/pagination";
-import { Trash2, Pencil, Plus, MapPin } from "lucide-react";
-import { PAGE_SIZE, SEARCH_DEBOUNCE_MS } from "@/lib/constants";
-import { useDebounce } from "use-debounce";
-import type { ContactWithRelations } from "@/lib/typesWithRelations";
+import { Trash2, Pencil, Plus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -33,41 +33,40 @@ import {
   AlertDialogAction,
   AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
-import { useRouter } from "next/navigation";
+import type { AddressWithRelations } from "@/lib/typesWithRelations";
 
-interface ContactListProps {
-  onCreate?: () => void;
-  onEdit?: (contact: any) => void;
-  onDelete?: (contact: any) => void;
-}
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
 
-function getContactUrl({ search, page, pageSize, sortBy, sortDir }: any) {
+function getAddressUrl({ contactId, search, page, pageSize, sortBy, sortDir }: any) {
   const params = new URLSearchParams({
     search: search || "",
     page: String(page || 1),
     pageSize: String(pageSize || PAGE_SIZE),
     sortBy: String(sortBy || "id"),
     sortDir: sortDir || "asc",
+    contactId: String(contactId),
   });
-  return `/api/contact?${params.toString()}`;
+  return `/api/address?${params.toString()}`;
 }
 
-export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
+const AddressPage = () => {
+  const params = useParams();
+  const router = useRouter();
+  const contactId = params.id;
   const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [page, setPage] = useState(1);
   const pageSize = PAGE_SIZE;
   const [sortBy, setSortBy] = useState("id");
   const [sortDir, setSortDir] = useState("asc");
-  const router = typeof window !== "undefined" ? require("next/navigation").useRouter() : null;
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, isLoading } = useSWR(
-    getContactUrl({ search: debouncedSearch, page, pageSize, sortBy, sortDir }),
+    getAddressUrl({ contactId, search, page, pageSize, sortBy, sortDir }),
     async (url) => {
       const res = await fetch(url);
       return res.json();
@@ -76,11 +75,9 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
   );
 
   const total = data?.total || 0;
-  // Change the contacts type to include gender relation
-  const contacts = (data?.data || []) as ContactWithRelations[];
-
+  const addresses = (data?.data || []) as AddressWithRelations[];
   const totalPages = Math.ceil(total / pageSize);
-  const allIds = contacts.map((c) => String(c.id));
+  const allIds = addresses.map((a) => String(a.id));
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.includes(id));
 
   const toggleAll = () => {
@@ -95,10 +92,11 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-4">Addresses</h2>
       <div className="flex items-center justify-between mb-4">
         <Input
-          placeholder="Search contacts..."
+          placeholder="Search addresses..."
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -110,7 +108,7 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
           <Button
             type="button"
             size="sm"
-            onClick={() => (window.location.href = "/contact/create")}
+            onClick={() => router.push(`/contact/${contactId}/address/create`)}
           >
             <Plus size={16} className="mr-1" /> Create
           </Button>
@@ -129,10 +127,10 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Selected Contacts</AlertDialogTitle>
+                <AlertDialogTitle>Delete Selected Addresses</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete {selected.length} selected contact
-                  {selected.length === 1 ? "" : "s"}? This action cannot be undone.
+                  Are you sure you want to delete {selected.length} selected address
+                  {selected.length === 1 ? "" : "es"}? This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -144,19 +142,11 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
                     setBulkDeleting(true);
                     try {
                       await Promise.all(
-                        selected.map((id) => fetch(`/api/contact/${id}`, { method: "DELETE" }))
+                        selected.map((id) => fetch(`/api/address/${id}`, { method: "DELETE" }))
                       );
                       setSelected([]);
                       setBulkDeleteOpen(false);
-                      mutate(
-                        getContactUrl({
-                          search: debouncedSearch,
-                          page,
-                          pageSize,
-                          sortBy,
-                          sortDir,
-                        })
-                      );
+                      mutate(getAddressUrl({ contactId, search, page, pageSize, sortBy, sortDir }));
                     } finally {
                       setBulkDeleting(false);
                     }
@@ -193,40 +183,57 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
             <TableHead
               className="font-semibold cursor-pointer"
               onClick={() => {
-                setSortBy("first_name");
+                setSortBy("street");
                 setSortDir(sortDir === "asc" ? "desc" : "asc");
               }}
             >
-              First Name
+              Street
             </TableHead>
             <TableHead
               className="font-semibold cursor-pointer"
               onClick={() => {
-                setSortBy("last_name");
+                setSortBy("city");
                 setSortDir(sortDir === "asc" ? "desc" : "asc");
               }}
             >
-              Last Name
+              City
             </TableHead>
             <TableHead
               className="font-semibold cursor-pointer"
               onClick={() => {
-                setSortBy("gender_id");
+                setSortBy("postal_code");
                 setSortDir(sortDir === "asc" ? "desc" : "asc");
               }}
             >
-              Gender
+              Postal Code
             </TableHead>
             <TableHead
               className="font-semibold cursor-pointer"
               onClick={() => {
-                setSortBy("date_of_birth");
+                setSortBy("address_type_id");
                 setSortDir(sortDir === "asc" ? "desc" : "asc");
               }}
             >
-              Date of Birth
+              Type
             </TableHead>
-            <TableHead className="font-semibold">Profile Picture</TableHead>
+            <TableHead
+              className="font-semibold cursor-pointer"
+              onClick={() => {
+                setSortBy("country_id");
+                setSortDir(sortDir === "asc" ? "desc" : "asc");
+              }}
+            >
+              Country
+            </TableHead>
+            <TableHead
+              className="font-semibold cursor-pointer"
+              onClick={() => {
+                setSortBy("state_id");
+                setSortDir(sortDir === "asc" ? "desc" : "asc");
+              }}
+            >
+              State
+            </TableHead>
             <TableHead className="text-center font-semibold">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -235,60 +242,38 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
             <TableRow>
               <TableCell colSpan={9}>Loading...</TableCell>
             </TableRow>
-          ) : contacts.length === 0 ? (
+          ) : addresses.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9}>No contacts found.</TableCell>
+              <TableCell colSpan={9}>No addresses found.</TableCell>
             </TableRow>
           ) : (
-            contacts.map((contact) => (
-              <TableRow key={contact.id}>
+            addresses.map((address) => (
+              <TableRow key={address.id}>
                 <TableCell className="w-8">
                   <input
                     type="checkbox"
-                    aria-label={`Select row ${contact.id}`}
-                    checked={selected.includes(String(contact.id))}
-                    onChange={() => toggleOne(contact.id)}
+                    aria-label={`Select row ${address.id}`}
+                    checked={selected.includes(String(address.id))}
+                    onChange={() => toggleOne(address.id)}
                   />
                 </TableCell>
-                <TableCell>{contact.id}</TableCell>
-                <TableCell>{contact.first_name}</TableCell>
-                <TableCell>{contact.last_name}</TableCell>
-                <TableCell>
-                  {contact.gender?.name || <span className="text-gray-400">-</span>}
-                </TableCell>
-                <TableCell>{contact.date_of_birth}</TableCell>
-                <TableCell>
-                  {contact.profile_picture_url ? (
-                    <img
-                      src={contact.profile_picture_url}
-                      alt="Profile"
-                      className="w-8 h-8 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </TableCell>
+                <TableCell>{address.id}</TableCell>
+                <TableCell>{address.street}</TableCell>
+                <TableCell>{address.city}</TableCell>
+                <TableCell>{address.postal_code}</TableCell>
+                <TableCell>{address.address_type?.name || ""}</TableCell>
+                <TableCell>{address.country?.name || ""}</TableCell>
+                <TableCell>{address.state?.name || ""}</TableCell>
                 <TableCell className="text-center flex gap-2 justify-center">
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
                     className="h-8 w-8 p-0"
-                    onClick={() => router && router.push(`/contact/${contact.id}`)}
+                    onClick={() => router.push(`/contact/${contactId}/address/${address.id}`)}
                     aria-label="Edit"
                   >
                     <Pencil size={16} />
-                  </Button>
-                  {/* Address button */}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() => router && router.push(`/contact/${contact.id}/address`)}
-                    aria-label="Addresses"
-                  >
-                    <MapPin size={16} />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -297,22 +282,19 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
                         size="sm"
                         variant="destructive"
                         className="h-8 w-8 p-0"
-                        onClick={() => setDeleteId(contact.id)}
+                        onClick={() => setDeleteId(address.id)}
                         aria-label="Delete"
                       >
                         <Trash2 size={16} />
                       </Button>
                     </AlertDialogTrigger>
-                    {deleteId === contact.id && (
+                    {deleteId === address.id && (
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+                          <AlertDialogTitle>Delete Address</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete contact{" "}
-                            <b>
-                              {contact.first_name} {contact.last_name}
-                            </b>
-                            ? This action cannot be undone.
+                            Are you sure you want to delete address <b>{address.street}</b>? This
+                            action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -326,14 +308,15 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
                             onClick={async () => {
                               setIsDeleting(true);
                               try {
-                                await fetch(`/api/contact/${contact.id}`, { method: "DELETE" });
+                                await fetch(`/api/address/${address.id}`, { method: "DELETE" });
                                 setDeleteId(null);
                                 setSelected((prev) =>
-                                  prev.filter((id) => id !== String(contact.id))
+                                  prev.filter((id) => id !== String(address.id))
                                 );
                                 mutate(
-                                  getContactUrl({
-                                    search: debouncedSearch,
+                                  getAddressUrl({
+                                    contactId,
+                                    search,
                                     page,
                                     pageSize,
                                     sortBy,
@@ -381,4 +364,6 @@ export function ContactList({ onCreate, onEdit, onDelete }: ContactListProps) {
       </div>
     </div>
   );
-}
+};
+
+export default AddressPage;

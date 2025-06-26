@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import type { Contact } from "@/lib/schema";
+import type { ContactWithRelations } from "@/lib/typesWithRelations";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,7 +41,7 @@ const contactSchema = z.object({
 type ContactFormValues = z.infer<typeof contactSchema>;
 
 interface ContactFormProps {
-  initial?: Partial<Contact>;
+  initial?: Partial<ContactWithRelations>;
   onSubmit: (data: Partial<Contact>) => Promise<void> | void;
   loading?: boolean;
   submitLabel?: string;
@@ -70,7 +71,7 @@ export default function ContactForm({
   const [genderOptions, setGenderOptions] = React.useState<{ id: number; name: string }[]>([]);
   const [genderLoading, setGenderLoading] = React.useState(false);
   const [open, setOpen] = React.useState(false);
-  const [genderSearch, setGenderSearch] = React.useState("");
+  const [genderSearch, setGenderSearch] = React.useState(initial.gender?.name || "");
   const [debouncedGenderSearch] = useDebounce(genderSearch, SEARCH_DEBOUNCE_MS);
 
   // Fetch gender options from API (correct route)
@@ -104,22 +105,6 @@ export default function ContactForm({
       ignore = true;
     };
   }, [debouncedGenderSearch]);
-
-  // On load, if editing and initial.gender_id is set, fetch gender name and set as search string
-  React.useEffect(() => {
-    if (initial.gender_id) {
-      (async () => {
-        try {
-          const res = await fetch(`/api/gender/${initial.gender_id}`);
-          if (res.ok) {
-            const gender = await res.json();
-            if (gender?.name) setGenderSearch(gender.name);
-          }
-        } catch {}
-      })();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initial.gender_id]);
 
   return (
     <Form {...form}>

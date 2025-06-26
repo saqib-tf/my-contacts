@@ -8,7 +8,15 @@ export async function GET(req: NextRequest) {
   const pageSize = Number(searchParams.get("pageSize") || 10);
   const sortBy = (searchParams.get("sortBy") as any) || "id";
   const sortDir = searchParams.get("sortDir") === "desc" ? "desc" : "asc";
-  const result = await searchAddresses({ search, page, pageSize, sortBy, sortDir });
+  const contactId = searchParams.get("contactId");
+  const result = await searchAddresses({
+    search,
+    page,
+    pageSize,
+    sortBy,
+    sortDir,
+    contactId: contactId ? Number(contactId) : undefined,
+  });
   return NextResponse.json(result);
 }
 

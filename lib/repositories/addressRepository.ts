@@ -1,23 +1,41 @@
 import { db } from "../../lib/db";
-import { address } from "../../lib/schema";
+import { address, address_type, country, state } from "../../lib/schema";
 import type { Address, NewAddress } from "../../lib/schema";
-import { eq, ilike, count, desc } from "drizzle-orm";
+import { eq, ilike, or, count, desc, and } from "drizzle-orm";
 import type { SearchOptions } from "./searchOptions";
 
-export async function searchAddresses(options: SearchOptions<Address> = {}) {
-  const { search = "", page = 1, pageSize = 10, sortBy = "id", sortDir = "asc" } = options;
-  // For address, search street and city fields
-  const where = search
-    ? ilike(address.street, `%${search}%`) // You can expand this to OR with city if needed
-    : undefined;
+export async function searchAddresses(
+  options: SearchOptions<Address> & { contactId?: string | number } = {}
+) {
+  const {
+    search = "",
+    page = 1,
+    pageSize = 10,
+    sortBy = "id",
+    sortDir = "asc",
+    contactId,
+  } = options;
+  const whereClauses = [];
+  if (contactId) {
+    whereClauses.push(eq(address.person_id, Number(contactId)));
+  }
+  if (search) {
+    whereClauses.push(or(ilike(address.street, `%${search}%`), ilike(address.city, `%${search}%`)));
+  }
+  const where = whereClauses.length > 0 ? and(...whereClauses) : undefined;
   const [{ total }] = await db.select({ total: count() }).from(address).where(where);
-  const data = await db
-    .select()
-    .from(address)
-    .where(where)
-    .orderBy(sortDir === "asc" ? address[sortBy] : desc(address[sortBy]))
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
+  // Use .findMany and .with for eager loading
+  const data = await db.query.address.findMany({
+    where,
+    orderBy: sortDir === "asc" ? address[sortBy] : desc(address[sortBy]),
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    with: {
+      address_type: true,
+      country: true,
+      state: true,
+    },
+  });
   return { data, total: Number(total) };
 }
 
@@ -39,6 +57,14 @@ export async function deleteAddress(id: number): Promise<void> {
 }
 
 export async function getAddressById(id: number): Promise<Address | undefined> {
-  const [result] = await db.select().from(address).where(eq(address.id, id));
+  const [result] = await db.query.address.findMany({
+    where: eq(address.id, id),
+    with: {
+      address_type: true,
+      country: true,
+      state: true,
+    },
+    limit: 1,
+  });
   return result;
 }

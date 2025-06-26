@@ -39,6 +39,12 @@ export async function deleteContact(id: number): Promise<void> {
 }
 
 export async function getContactById(id: number): Promise<Contact | undefined> {
-  const [result] = await db.select().from(contact).where(eq(contact.id, id));
+  const [result] = await db.query.contact.findMany({
+    where: eq(contact.id, id),
+    with: {
+      gender: true,
+    },
+    limit: 1,
+  });
   return result;
 }

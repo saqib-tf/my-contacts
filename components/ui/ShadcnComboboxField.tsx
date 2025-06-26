@@ -51,7 +51,7 @@ export const ShadcnComboboxField: React.FC<ShadcnComboboxFieldProps> = ({
   return (
     <FormField
       control={form.control}
-      name="gender_id"
+      name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
           <FormLabel>{label}</FormLabel>
@@ -89,7 +89,7 @@ export const ShadcnComboboxField: React.FC<ShadcnComboboxFieldProps> = ({
                         value={g.name}
                         key={g.id}
                         onSelect={() => {
-                          form.setValue("gender_id", g.id.toString());
+                          form.setValue(name, g.id.toString());
                           setOpen(false);
                         }}
                       >

@@ -3,13 +3,13 @@
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import ContactForm from "@/components/ContactForm";
-import type { Contact } from "@/lib/schema";
+import type { ContactWithRelations } from "@/lib/typesWithRelations";
 
 export default function ContactEditPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const [contact, setContact] = useState<Contact | null>(null);
+  const [contact, setContact] = useState<ContactWithRelations | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
