@@ -9,7 +9,7 @@ const defaultTimestamps = {
 
 export const tenant = pgTable("tenant", {
   id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
   // You can add more fields (e.g., subscription, owner, etc.)
   ...defaultTimestamps,
 });
@@ -19,7 +19,7 @@ export const user = pgTable("user", {
   tenant_id: integer("tenant_id")
     .notNull()
     .references(() => tenant.id),
-  email: varchar("email", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 100 }),
   // Add password hash, role, etc. as needed
   ...defaultTimestamps,

@@ -1,7 +1,7 @@
 import { db } from "../db";
 import { country } from "../schema";
 import type { Country, NewCountry } from "../schema";
-import { eq, ilike, count, desc } from "drizzle-orm";
+import { eq, ilike, count, desc, and, SQL } from "drizzle-orm";
 import type { SearchOptions } from "./searchOptions";
 
 // Create
@@ -11,32 +11,51 @@ export async function createCountry(data: NewCountry): Promise<Country> {
 }
 
 // Get by ID
-export async function getCountryById(id: number): Promise<Country | undefined> {
-  const [result] = await db.select().from(country).where(eq(country.id, id));
+export async function getCountryById(id: number, tenantId: number): Promise<Country | undefined> {
+  const [result] = await db
+    .select()
+    .from(country)
+    .where(and(eq(country.id, id), eq(country.tenant_id, tenantId)));
   return result;
 }
 
 // Update
 export async function updateCountry(
   id: number,
+  tenantId: number,
   data: Partial<NewCountry>
 ): Promise<Country | undefined> {
-  const [updated] = await db.update(country).set(data).where(eq(country.id, id)).returning();
+  const [updated] = await db
+    .update(country)
+    .set(data)
+    .where(and(eq(country.id, id), eq(country.tenant_id, tenantId)))
+    .returning();
   return updated;
 }
 
 // Delete
-export async function deleteCountry(id: number): Promise<void> {
-  await db.delete(country).where(eq(country.id, id));
+export async function deleteCountry(id: number, tenantId: number): Promise<void> {
+  await db.delete(country).where(and(eq(country.id, id), eq(country.tenant_id, tenantId)));
 }
 
 // Search with paging and sorting
 export async function searchCountries(
-  options: SearchOptions<Country> = {}
+  options: SearchOptions<Country>
 ): Promise<{ data: Country[]; total: number }> {
-  const { search = "", page = 1, pageSize = 10, sortBy = "id", sortDir = "asc" } = options;
+  const {
+    search = "",
+    page = 1,
+    pageSize = 10,
+    sortBy = "id",
+    sortDir = "asc",
+    tenantId,
+  } = options;
 
-  const where = search ? ilike(country.name, `%${search}%`) : undefined;
+  const whereClauses: (any | undefined)[] = [eq(country.tenant_id, tenantId)];
+  if (search) {
+    whereClauses.push(ilike(country.name, `%${search}%`));
+  }
+  const where = and(...(whereClauses.filter(Boolean) as SQL<unknown>[]));
 
   // Count total
   const [{ total }] = await db.select({ total: count() }).from(country).where(where);

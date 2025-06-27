@@ -1,12 +1,22 @@
 import { db } from "../../lib/db";
 import { contact } from "../../lib/schema";
 import type { Contact, NewContact } from "../../lib/schema";
-import { eq, ilike, count, desc } from "drizzle-orm";
+import { eq, ilike, count, desc, and } from "drizzle-orm";
 import type { SearchOptions } from "./searchOptions";
 
-export async function searchContacts(options: SearchOptions<Contact> = {}) {
-  const { search = "", page = 1, pageSize = 10, sortBy = "id", sortDir = "asc" } = options;
-  const where = search ? ilike(contact.first_name, `%${search}%`) : undefined;
+export async function searchContacts(options: SearchOptions<Contact>) {
+  const {
+    search = "",
+    page = 1,
+    pageSize = 10,
+    sortBy = "id",
+    sortDir = "asc",
+    tenantId,
+  } = options;
+  const where = and(
+    eq(contact.tenant_id, tenantId),
+    search ? ilike(contact.first_name, `%${search}%`) : undefined
+  );
   const [{ total }] = await db.select({ total: count() }).from(contact).where(where);
   // Use Drizzle relations API to include gender
   const data = await db.query.contact.findMany({
@@ -28,19 +38,24 @@ export async function createContact(data: NewContact): Promise<Contact> {
 
 export async function updateContact(
   id: number,
+  tenantId: number,
   data: Partial<NewContact>
 ): Promise<Contact | undefined> {
-  const [updated] = await db.update(contact).set(data).where(eq(contact.id, id)).returning();
+  const [updated] = await db
+    .update(contact)
+    .set(data)
+    .where(and(eq(contact.id, id), eq(contact.tenant_id, tenantId)))
+    .returning();
   return updated;
 }
 
-export async function deleteContact(id: number): Promise<void> {
-  await db.delete(contact).where(eq(contact.id, id));
+export async function deleteContact(id: number, tenantId: number): Promise<void> {
+  await db.delete(contact).where(and(eq(contact.id, id), eq(contact.tenant_id, tenantId)));
 }
 
-export async function getContactById(id: number): Promise<Contact | undefined> {
+export async function getContactById(id: number, tenantId: number): Promise<Contact | undefined> {
   const [result] = await db.query.contact.findMany({
-    where: eq(contact.id, id),
+    where: (contact, { eq, and }) => and(eq(contact.id, id), eq(contact.tenant_id, tenantId)),
     with: {
       gender: true,
     },

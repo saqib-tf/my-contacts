@@ -1,4 +1,8 @@
-export interface SearchOptions<T> {
+export interface TenantScopedOptions {
+  tenantId: number;
+}
+
+export interface SearchOptions<T> extends TenantScopedOptions {
   search?: string;
   page?: number;
   pageSize?: number;

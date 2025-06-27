@@ -1,12 +1,25 @@
 import { db } from "../../lib/db";
 import { address_type } from "../../lib/schema";
 import type { AddressType, NewAddressType } from "../../lib/schema";
-import { eq, ilike, count, desc } from "drizzle-orm";
+import { eq, ilike, count, desc, and } from "drizzle-orm";
 import type { SearchOptions } from "./searchOptions";
 
-export async function searchAddressTypes(options: SearchOptions<AddressType> = {}) {
-  const { search = "", page = 1, pageSize = 10, sortBy = "id", sortDir = "asc" } = options;
-  const where = search ? ilike(address_type.name, `%${search}%`) : undefined;
+export async function searchAddressTypes(options: SearchOptions<AddressType>) {
+  const {
+    search = "",
+    page = 1,
+    pageSize = 10,
+    sortBy = "id",
+    sortDir = "asc",
+    tenantId,
+  } = options;
+
+  const whereClauses: (any | undefined)[] = [eq(address_type.tenant_id, tenantId)];
+  if (search) {
+    whereClauses.push(ilike(address_type.name, `%${search}%`));
+  }
+  const where = and(...whereClauses.filter(Boolean));
+
   const [{ total }] = await db.select({ total: count() }).from(address_type).where(where);
   const data = await db
     .select()
@@ -25,21 +38,30 @@ export async function createAddressType(data: NewAddressType): Promise<AddressTy
 
 export async function updateAddressType(
   id: number,
+  tenantId: number,
   data: Partial<NewAddressType>
 ): Promise<AddressType | undefined> {
   const [updated] = await db
     .update(address_type)
     .set(data)
-    .where(eq(address_type.id, id))
+    .where(and(eq(address_type.id, id), eq(address_type.tenant_id, tenantId)))
     .returning();
   return updated;
 }
 
-export async function deleteAddressType(id: number): Promise<void> {
-  await db.delete(address_type).where(eq(address_type.id, id));
+export async function deleteAddressType(id: number, tenantId: number): Promise<void> {
+  await db
+    .delete(address_type)
+    .where(and(eq(address_type.id, id), eq(address_type.tenant_id, tenantId)));
 }
 
-export async function getAddressTypeById(id: number): Promise<AddressType | undefined> {
-  const [result] = await db.select().from(address_type).where(eq(address_type.id, id));
+export async function getAddressTypeById(
+  id: number,
+  tenantId: number
+): Promise<AddressType | undefined> {
+  const [result] = await db
+    .select()
+    .from(address_type)
+    .where(and(eq(address_type.id, id), eq(address_type.tenant_id, tenantId)));
   return result;
 }

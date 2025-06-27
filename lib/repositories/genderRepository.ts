@@ -1,15 +1,26 @@
 import { db } from "../../lib/db";
 import { gender } from "../../lib/schema";
 import type { Gender, NewGender } from "../../lib/schema";
-import { eq, ilike, count, desc } from "drizzle-orm";
+import { eq, ilike, count, desc, and, SQL } from "drizzle-orm";
 import type { SearchOptions } from "../repositories/searchOptions";
 
 export async function searchGenders(
-  options: SearchOptions<Gender> = {}
+  options: SearchOptions<Gender>
 ): Promise<{ data: Gender[]; total: number }> {
-  const { search = "", page = 1, pageSize = 10, sortBy = "id", sortDir = "asc" } = options;
+  const {
+    search = "",
+    page = 1,
+    pageSize = 10,
+    sortBy = "id",
+    sortDir = "asc",
+    tenantId,
+  } = options;
 
-  const where = search ? ilike(gender.name, `%${search}%`) : undefined;
+  const whereClauses: (SQL<unknown> | undefined)[] = [eq(gender.tenant_id, tenantId)];
+  if (search) {
+    whereClauses.push(ilike(gender.name, `%${search}%`));
+  }
+  const where = and(...(whereClauses.filter(Boolean) as SQL<unknown>[]));
 
   // Count total
   const [{ total }] = await db.select({ total: count() }).from(gender).where(where);
@@ -33,21 +44,29 @@ export async function createGender(data: NewGender): Promise<Gender> {
 }
 
 // Get by ID
-export async function getGenderById(id: number): Promise<Gender | undefined> {
-  const [result] = await db.select().from(gender).where(eq(gender.id, id));
+export async function getGenderById(id: number, tenantId: number): Promise<Gender | undefined> {
+  const [result] = await db
+    .select()
+    .from(gender)
+    .where(and(eq(gender.id, id), eq(gender.tenant_id, tenantId)));
   return result;
 }
 
 // Update
 export async function updateGender(
   id: number,
+  tenantId: number,
   data: Partial<NewGender>
 ): Promise<Gender | undefined> {
-  const [updated] = await db.update(gender).set(data).where(eq(gender.id, id)).returning();
+  const [updated] = await db
+    .update(gender)
+    .set(data)
+    .where(and(eq(gender.id, id), eq(gender.tenant_id, tenantId)))
+    .returning();
   return updated;
 }
 
 // Delete
-export async function deleteGender(id: number): Promise<void> {
-  await db.delete(gender).where(eq(gender.id, id));
+export async function deleteGender(id: number, tenantId: number): Promise<void> {
+  await db.delete(gender).where(and(eq(gender.id, id), eq(gender.tenant_id, tenantId)));
 }
