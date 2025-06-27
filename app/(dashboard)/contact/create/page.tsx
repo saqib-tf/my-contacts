@@ -21,7 +21,7 @@ export default function ContactCreatePage() {
               body: JSON.stringify(data),
             });
             if (!res.ok) throw new Error("Failed to create contact");
-            router.push("/");
+            router.push("/contact");
           } finally {
             setLoading(false);
           }
@@ -29,7 +29,7 @@ export default function ContactCreatePage() {
         loading={loading}
         submitLabel="Create"
         cancelLabel="Cancel"
-        onCancel={() => router.push("/")}
+        onCancel={() => router.push("/contact")}
       />
     </div>
   );

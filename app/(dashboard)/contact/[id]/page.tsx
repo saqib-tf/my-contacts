@@ -38,7 +38,7 @@ export default function ContactEditPage() {
               body: JSON.stringify(data),
             });
             if (!res.ok) throw new Error("Failed to update contact");
-            router.push("/");
+            router.push("/contact");
           } finally {
             setLoading(false);
           }
@@ -46,7 +46,7 @@ export default function ContactEditPage() {
         loading={loading}
         submitLabel="Save"
         cancelLabel="Cancel"
-        onCancel={() => router.push("/")}
+        onCancel={() => router.push("/contact")}
       />
     </div>
   );
