@@ -1,4 +1,5 @@
 import Link from "next/link";
+import UserAvatar from "./UserAvatar";
 
 export default function Navbar() {
   return (
@@ -25,14 +26,6 @@ export default function Navbar() {
           </li>
           <li>
             <Link
-              href="/settings"
-              className="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition"
-            >
-              Settings
-            </Link>
-          </li>
-          <li>
-            <Link
               href="/about"
               className="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition"
             >
@@ -41,11 +34,9 @@ export default function Navbar() {
           </li>
         </ul>
       </div>
-      {/* Right: Sign In/Out Button */}
+      {/* Right: User Avatar */}
       <div>
-        <button className="px-4 py-1.5 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 transition">
-          Sign In
-        </button>
+        <UserAvatar />
       </div>
     </nav>
   );

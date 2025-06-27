@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import useSWR, { mutate } from "swr";
 import { Input } from "@/components/ui/input";

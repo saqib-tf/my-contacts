@@ -1,0 +1,8 @@
+{
+  "files.exclude": {
+    // "**/*.tsx": true,
+    // "**/*.css": true,
+    ".next": true,
+    "node_modules": true
+  }
+}

@@ -7,8 +7,29 @@ const defaultTimestamps = {
   updated_by: varchar("updated_by", { length: 100 }),
 };
 
+export const tenant = pgTable("tenant", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  // You can add more fields (e.g., subscription, owner, etc.)
+  ...defaultTimestamps,
+});
+
+export const user = pgTable("user", {
+  id: serial("id").primaryKey(),
+  tenant_id: integer("tenant_id")
+    .notNull()
+    .references(() => tenant.id),
+  email: varchar("email", { length: 255 }).notNull(),
+  name: varchar("name", { length: 100 }),
+  // Add password hash, role, etc. as needed
+  ...defaultTimestamps,
+});
+
 export const country = pgTable("country", {
   id: serial("id").primaryKey(),
+  tenant_id: integer("tenant_id")
+    .notNull()
+    .references(() => tenant.id),
   code: varchar("code", { length: 10 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   ...defaultTimestamps,
@@ -16,6 +37,9 @@ export const country = pgTable("country", {
 
 export const state = pgTable("state", {
   id: serial("id").primaryKey(),
+  tenant_id: integer("tenant_id")
+    .notNull()
+    .references(() => tenant.id),
   name: varchar("name", { length: 255 }).notNull(),
   country_id: integer("country_id")
     .notNull()
@@ -25,6 +49,9 @@ export const state = pgTable("state", {
 
 export const gender = pgTable("gender", {
   id: serial("id").primaryKey(),
+  tenant_id: integer("tenant_id")
+    .notNull()
+    .references(() => tenant.id),
   code: varchar("code", { length: 10 }).notNull(),
   name: varchar("name", { length: 50 }).notNull(),
   ...defaultTimestamps,
@@ -32,6 +59,9 @@ export const gender = pgTable("gender", {
 
 export const contact = pgTable("contact", {
   id: serial("id").primaryKey(),
+  tenant_id: integer("tenant_id")
+    .notNull()
+    .references(() => tenant.id),
   first_name: varchar("first_name", { length: 100 }).notNull(),
   last_name: varchar("last_name", { length: 100 }).notNull(),
   gender_id: integer("gender_id").references(() => gender.id),
@@ -42,12 +72,18 @@ export const contact = pgTable("contact", {
 
 export const address_type = pgTable("address_type", {
   id: serial("id").primaryKey(),
+  tenant_id: integer("tenant_id")
+    .notNull()
+    .references(() => tenant.id),
   name: varchar("name", { length: 100 }).notNull(),
   ...defaultTimestamps,
 });
 
 export const address = pgTable("address", {
   id: serial("id").primaryKey(),
+  tenant_id: integer("tenant_id")
+    .notNull()
+    .references(() => tenant.id),
   street: varchar("street", { length: 255 }),
   city: varchar("city", { length: 100 }),
   state_id: integer("state_id").references(() => state.id),
@@ -57,6 +93,12 @@ export const address = pgTable("address", {
   person_id: integer("person_id").references(() => contact.id),
   ...defaultTimestamps,
 });
+
+export type Tenant = typeof tenant.$inferSelect;
+export type NewTenant = typeof tenant.$inferInsert;
+
+export type User = typeof user.$inferSelect;
+export type NewUser = typeof user.$inferInsert;
 
 export type Country = typeof country.$inferSelect;
 export type NewCountry = typeof country.$inferInsert;
