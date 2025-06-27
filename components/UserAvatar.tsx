@@ -10,12 +10,16 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { SignOut } from "./signout-button";
-import SignIn from "./sign-in";
+import { Button } from "@/components/ui/button";
 
 export default async function UserAvatar() {
   const session = await auth();
-  if (!session?.user) return <SignIn />;
-  // console.log("UserAvatar session:", session);
+  if (!session?.user)
+    return (
+      <Button asChild>
+        <Link href="/sign-in">Sign In</Link>
+      </Button>
+    );
   const user = session.user;
   return (
     <DropdownMenu>
