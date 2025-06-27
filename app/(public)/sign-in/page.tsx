@@ -8,9 +8,7 @@ export default function LoginPage() {
       <p className="text-lg text-muted-foreground">You are not logged in.</p>
       <div className="flex gap-4">
         <SignIn />
-        <Button asChild variant="secondary">
-          <Link href="/register">Register New Account</Link>
-        </Button>
+        <SignIn redirectUrl="/register" label="Register New Account" variant="outline" />
       </div>
     </div>
   );
