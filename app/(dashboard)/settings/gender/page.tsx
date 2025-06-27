@@ -38,7 +38,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 
-function getGenderUrl({ search, page, pageSize, sortBy, sortDir }: SearchOptions<Gender>) {
+function getGenderUrl({ search, page, pageSize, sortBy, sortDir }: any) {
   const params = new URLSearchParams({
     search: search || "",
     page: String(page || 1),
