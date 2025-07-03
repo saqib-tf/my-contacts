@@ -65,3 +65,12 @@ export async function getAddressTypeById(
     .where(and(eq(address_type.id, id), eq(address_type.tenant_id, tenantId)));
   return result;
 }
+
+// Count address types for a tenant
+export async function countAddressTypes(tenantId: number): Promise<number> {
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(address_type)
+    .where(eq(address_type.tenant_id, tenantId));
+  return Number(total);
+}

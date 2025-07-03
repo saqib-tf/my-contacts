@@ -71,3 +71,12 @@ export async function searchCountries(
 
   return { data, total: Number(total) };
 }
+
+// Count countries for a tenant
+export async function countCountries(tenantId: number): Promise<number> {
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(country)
+    .where(eq(country.tenant_id, tenantId));
+  return Number(total);
+}

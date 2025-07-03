@@ -76,3 +76,12 @@ export async function getAddressById(id: number, tenantId: number): Promise<Addr
   });
   return result;
 }
+
+// Count addresses for a tenant
+export async function countAddresses(tenantId: number): Promise<number> {
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(address)
+    .where(eq(address.tenant_id, tenantId));
+  return Number(total);
+}

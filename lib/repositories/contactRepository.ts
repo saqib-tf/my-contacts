@@ -63,3 +63,12 @@ export async function getContactById(id: number, tenantId: number): Promise<Cont
   });
   return result;
 }
+
+// Count contacts for a tenant
+export async function countContacts(tenantId: number): Promise<number> {
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(contact)
+    .where(eq(contact.tenant_id, tenantId));
+  return Number(total);
+}

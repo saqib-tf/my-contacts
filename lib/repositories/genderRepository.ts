@@ -70,3 +70,12 @@ export async function updateGender(
 export async function deleteGender(id: number, tenantId: number): Promise<void> {
   await db.delete(gender).where(and(eq(gender.id, id), eq(gender.tenant_id, tenantId)));
 }
+
+// Count genders for a tenant
+export async function countGenders(tenantId: number): Promise<number> {
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(gender)
+    .where(eq(gender.tenant_id, tenantId));
+  return Number(total);
+}
